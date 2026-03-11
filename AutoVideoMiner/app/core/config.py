@@ -1,4 +1,4 @@
-"""Configuration loader and Bedrock model factory."""
+"""Configuration loader and per-agent Bedrock model factories."""
 
 from __future__ import annotations
 
@@ -26,44 +26,49 @@ def load_settings() -> dict[str, Any]:
     return data
 
 
-def _build_boto3_client(region: str):
+def _env(name: str, required: bool = False, default: str | None = None) -> str | None:
+    value = os.getenv(name, default)
+    if required and not value:
+        raise EnvironmentError(f"缺少环境变量: {name}")
+    return value
+
+
+def _build_client_from_cfg(model_cfg: dict[str, Any]):
+    region = _env(model_cfg["region_env"], required=False, default="us-east-1")
     return boto3.client(
         "bedrock-runtime",
         region_name=region,
-        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-        aws_session_token=os.getenv("AWS_SESSION_TOKEN"),
+        aws_access_key_id=_env(model_cfg["access_key_env"], required=False),
+        aws_secret_access_key=_env(model_cfg["secret_key_env"], required=False),
+        aws_session_token=_env(model_cfg["session_token_env"], required=False),
     )
 
 
-def _resolve_model(alias: str) -> dict[str, Any]:
+def get_agent_model_config(agent_name: str) -> dict[str, Any]:
     settings = load_settings()
-    if alias not in settings.get("models", {}):
-        raise KeyError(f"模型别名不存在: {alias}")
-    return settings["models"][alias]
+    cfg = settings.get("agents", {}).get(agent_name)
+    if not cfg:
+        raise KeyError(f"agent 未配置: {agent_name}")
+    if "llm" not in cfg or "embedding" not in cfg:
+        raise KeyError(f"agent {agent_name} 缺少 llm/embedding 配置")
+    return cfg
 
 
 def get_llm_for_agent(agent_name: str) -> ChatBedrock:
-    settings = load_settings()
-    agent_cfg = settings.get("agents", {}).get(agent_name)
-    if not agent_cfg:
-        raise KeyError(f"agent 未配置: {agent_name}")
-
-    model_config = _resolve_model(agent_cfg["llm"])
-    if model_config["provider"] != "aws_bedrock":
-        raise ValueError(f"Unsupported provider: {model_config['provider']}")
-
-    region = model_config.get("region", os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
-    client = _build_boto3_client(region)
+    cfg = get_agent_model_config(agent_name)["llm"]
+    if cfg["provider"] != "aws_bedrock":
+        raise ValueError("仅支持 aws_bedrock")
+    client = _build_client_from_cfg(cfg)
     return ChatBedrock(
         client=client,
-        model_id=model_config["name"],
-        model_kwargs={"temperature": model_config.get("temperature", 0.0)},
+        model_id=cfg["model_id"],
+        model_kwargs={"temperature": cfg.get("temperature", 0)},
     )
 
 
-def get_embedding_model() -> BedrockEmbeddings:
-    model_config = _resolve_model("embedding_model")
-    region = model_config.get("region", os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
-    client = _build_boto3_client(region)
-    return BedrockEmbeddings(client=client, model_id=model_config["name"])
+def get_embedding_for_agent(agent_name: str) -> BedrockEmbeddings:
+    cfg = get_agent_model_config(agent_name)["embedding"]
+    if cfg["provider"] != "aws_bedrock":
+        raise ValueError("仅支持 aws_bedrock")
+    client = _build_client_from_cfg(cfg)
+    return BedrockEmbeddings(client=client, model_id=cfg["model_id"])

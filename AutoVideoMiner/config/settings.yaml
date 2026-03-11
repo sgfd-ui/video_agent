@@ -1,30 +1,91 @@
 system:
   max_token_threshold: 0.8
-
-models:
-  embedding_model:
-    provider: "aws_bedrock"
-    name: "amazon.titan-embed-text-v1"
-    region: "us-east-1"
-  logic_model:
-    provider: "aws_bedrock"
-    name: "amazon.nova-lite-v1:0"
-    region: "us-east-1"
-    temperature: 0.0
-  vision_model:
-    provider: "aws_bedrock"
-    name: "amazon.nova-lite-v1:0"
-    region: "us-east-1"
-    temperature: 0.2
+  probe_size: 5
+  sweep_limit: 50
+  evaluator_pass_threshold: 0.8
 
 agents:
   planner_agent:
-    llm: "logic_model"
+    llm:
+      provider: aws_bedrock
+      model_id: amazon.nova-lite-v1:0
+      temperature: 0
+      region_env: PLANNER_AWS_REGION
+      access_key_env: PLANNER_AWS_ACCESS_KEY_ID
+      secret_key_env: PLANNER_AWS_SECRET_ACCESS_KEY
+      session_token_env: PLANNER_AWS_SESSION_TOKEN
+    embedding:
+      provider: aws_bedrock
+      model_id: amazon.titan-embed-text-v1
+      region_env: PLANNER_AWS_REGION
+      access_key_env: PLANNER_AWS_ACCESS_KEY_ID
+      secret_key_env: PLANNER_AWS_SECRET_ACCESS_KEY
+      session_token_env: PLANNER_AWS_SESSION_TOKEN
+
   crawler_agent:
-    llm: "logic_model"
+    llm:
+      provider: aws_bedrock
+      model_id: amazon.nova-lite-v1:0
+      temperature: 0
+      region_env: CRAWLER_AWS_REGION
+      access_key_env: CRAWLER_AWS_ACCESS_KEY_ID
+      secret_key_env: CRAWLER_AWS_SECRET_ACCESS_KEY
+      session_token_env: CRAWLER_AWS_SESSION_TOKEN
+    embedding:
+      provider: aws_bedrock
+      model_id: amazon.titan-embed-text-v1
+      region_env: CRAWLER_AWS_REGION
+      access_key_env: CRAWLER_AWS_ACCESS_KEY_ID
+      secret_key_env: CRAWLER_AWS_SECRET_ACCESS_KEY
+      session_token_env: CRAWLER_AWS_SESSION_TOKEN
+
   evaluator_agent:
-    llm: "vision_model"
+    llm:
+      provider: aws_bedrock
+      model_id: amazon.nova-lite-v1:0
+      temperature: 0
+      region_env: EVALUATOR_AWS_REGION
+      access_key_env: EVALUATOR_AWS_ACCESS_KEY_ID
+      secret_key_env: EVALUATOR_AWS_SECRET_ACCESS_KEY
+      session_token_env: EVALUATOR_AWS_SESSION_TOKEN
+    embedding:
+      provider: aws_bedrock
+      model_id: amazon.titan-embed-text-v1
+      region_env: EVALUATOR_AWS_REGION
+      access_key_env: EVALUATOR_AWS_ACCESS_KEY_ID
+      secret_key_env: EVALUATOR_AWS_SECRET_ACCESS_KEY
+      session_token_env: EVALUATOR_AWS_SESSION_TOKEN
+
   segmentation_agent:
-    llm: "vision_model"
+    llm:
+      provider: aws_bedrock
+      model_id: amazon.nova-lite-v1:0
+      temperature: 0
+      region_env: SEGMENTATION_AWS_REGION
+      access_key_env: SEGMENTATION_AWS_ACCESS_KEY_ID
+      secret_key_env: SEGMENTATION_AWS_SECRET_ACCESS_KEY
+      session_token_env: SEGMENTATION_AWS_SESSION_TOKEN
+    embedding:
+      provider: aws_bedrock
+      model_id: amazon.titan-embed-text-v1
+      region_env: SEGMENTATION_AWS_REGION
+      access_key_env: SEGMENTATION_AWS_ACCESS_KEY_ID
+      secret_key_env: SEGMENTATION_AWS_SECRET_ACCESS_KEY
+      session_token_env: SEGMENTATION_AWS_SESSION_TOKEN
+
   explorer_agent:
-    llm: "vision_model"
+    llm:
+      provider: aws_bedrock
+      model_id: amazon.nova-lite-v1:0
+      temperature: 0
+      region_env: EXPLORER_AWS_REGION
+      access_key_env: EXPLORER_AWS_ACCESS_KEY_ID
+      secret_key_env: EXPLORER_AWS_SECRET_ACCESS_KEY
+      session_token_env: EXPLORER_AWS_SESSION_TOKEN
+    embedding:
+      provider: aws_bedrock
+      model_id: amazon.titan-embed-text-v1
+      region_env: EXPLORER_AWS_REGION
+      access_key_env: EXPLORER_AWS_ACCESS_KEY_ID
+      secret_key_env: EXPLORER_AWS_SECRET_ACCESS_KEY
+      session_token_env: EXPLORER_AWS_SESSION_TOKEN

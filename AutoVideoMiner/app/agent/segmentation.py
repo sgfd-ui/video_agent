@@ -1,4 +1,4 @@
-"""SegmentationAgent for download and cut filtering pipeline."""
+"""SegmentationAgent: download videos and produce candidate clips via ffmpeg."""
 
 from __future__ import annotations
 
@@ -15,7 +15,10 @@ class SegmentationAgent:
     def run(self, urls: list[str]) -> list[str]:
         clips: list[str] = []
         for url in urls:
-            local_video = download_video(url, self.workspace)
-            candidates = generate_candidate_cuts(local_video)
-            clips.extend(filter_valid_cuts(local_video, candidates, self.workspace))
+            try:
+                local_video = download_video(url, self.workspace)
+                candidates = generate_candidate_cuts(local_video)
+                clips.extend(filter_valid_cuts(local_video, candidates, self.workspace))
+            except Exception:
+                continue
         return clips

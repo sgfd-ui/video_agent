@@ -14,5 +14,5 @@ python-dotenv>=1.0.1
 # GUI
 streamlit>=1.36.0
 
-# Optional video tooling wrappers used by stubs
+# Video search/download
 yt-dlp>=2024.8.6

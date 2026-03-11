@@ -36,6 +36,9 @@ def run_app() -> None:
             "end_time": end_time,
             "event_snapshot": fetch_event_snapshot(db_path),
             "stop_flag": False,
+            "raw_urls": [],
+            "high_light_clips": [],
+            "manifest": {"events": []},
         }
 
     if start_clicked:
@@ -63,16 +66,19 @@ def run_app() -> None:
     c.metric("高光片段数量", len(state.get("high_light_clips", [])))
 
     st.subheader("Agent OS 日志流")
-    st.write(
-        [
-            f"ControlGate => {control_gate(state)}",
-            f"Planner tasks => {len(state.get('planner_tasks', []))}",
-            f"Manifest ready => {'manifest' in state}",
-        ]
+    st.code(
+        "\n".join(
+            [
+                f"ControlGate => {control_gate(state)}",
+                f"Planner tasks => {len(state.get('planner_tasks', []))}",
+                f"Collected URLs => {len(state.get('raw_urls', []))}",
+                f"Generated clips => {len(state.get('high_light_clips', []))}",
+            ]
+        )
     )
 
     st.subheader("结果清单")
     st.json(state.get("manifest", {"events": []}))
 
     st.subheader("HITL 接管中心")
-    st.info("若某节点返回 ask_human 中断标记，可在此提供人工判定并继续流程。")
+    st.info("当爬虫受阻或语义不确定时，通过 ask_human 中断并在此录入人工处理结果。")
