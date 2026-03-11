@@ -1,0 +1,30 @@
+system:
+  max_token_threshold: 0.8
+
+models:
+  embedding_model:
+    provider: "aws_bedrock"
+    name: "amazon.titan-embed-text-v1"
+    region: "us-east-1"
+  logic_model:
+    provider: "aws_bedrock"
+    name: "amazon.nova-lite-v1:0"
+    region: "us-east-1"
+    temperature: 0.0
+  vision_model:
+    provider: "aws_bedrock"
+    name: "amazon.nova-lite-v1:0"
+    region: "us-east-1"
+    temperature: 0.2
+
+agents:
+  planner_agent:
+    llm: "logic_model"
+  crawler_agent:
+    llm: "logic_model"
+  evaluator_agent:
+    llm: "vision_model"
+  segmentation_agent:
+    llm: "vision_model"
+  explorer_agent:
+    llm: "vision_model"
