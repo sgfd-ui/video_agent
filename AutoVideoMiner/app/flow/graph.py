@@ -9,12 +9,16 @@ from AutoVideoMiner.app.agent.explorer import ExplorerAgent
 from AutoVideoMiner.app.agent.planner import PlannerAgent
 from AutoVideoMiner.app.agent.segmentation import SegmentationAgent
 from AutoVideoMiner.app.core.config import load_settings
+from AutoVideoMiner.app.core.logger import get_logger
 from AutoVideoMiner.app.core.token_usage import add_token_usage, estimate_tokens, init_token_usage
 from AutoVideoMiner.app.flow.state import CrawlerSubState, GlobalState
 from AutoVideoMiner.app.tool.ask_human import ask_human
 
+LOGGER = get_logger("flow.graph")
+
 
 def control_gate(state: GlobalState) -> str:
+    LOGGER.info("control_gate check: run_mode=%s stop_flag=%s", state.get("run_mode"), state.get("stop_flag"))
     if state.get("stop_flag"):
         return "END"
     if state.get("run_mode") == "timer" and state.get("end_time") and datetime.now() > state["end_time"]:
@@ -25,20 +29,26 @@ def control_gate(state: GlobalState) -> str:
 
 
 def _run_single_task(sub_state: CrawlerSubState, crawler: CrawlerAgent, evaluator: EvaluatorAgent, target_scene: str, pass_threshold: float, token_usage: dict, logs_dir: str) -> list[str]:
+    LOGGER.info("subtask start: %s/%s", sub_state.get("platform"), sub_state.get("current_keyword"))
     platform = sub_state["platform"]
     keyword = sub_state["current_keyword"]
     add_token_usage(token_usage, "crawler_agent", estimate_tokens(f"crawl:{platform}:{keyword}"))
     for _ in range(3):
         probe_results = crawler.crawl(platform, keyword, "probe", logs_dir)
         score, _reason = evaluator.evaluate(platform, keyword, probe_results[:5], target_scene, token_usage, logs_dir)
+        LOGGER.info("subtask probe score=%s threshold=%s", score, pass_threshold)
         if score > pass_threshold:
             sweep_results = crawler.crawl(platform, keyword, "sweep", logs_dir)
             add_token_usage(token_usage, "crawler_agent", estimate_tokens(f"sweep:{len(sweep_results)}"))
-            return [x["url"] for x in sweep_results]
+            urls = [x["url"] for x in sweep_results]
+            LOGGER.info("subtask pass: urls=%s", len(urls))
+            return urls
+    LOGGER.info("subtask failed after retries")
     return []
 
 
 def run_once(state: GlobalState, db_path: str, workspace: str, logs_dir: str) -> GlobalState:
+    LOGGER.info("run_once start: scene=%s mode=%s", state.get("target_scene"), state.get("run_mode"))
     settings = load_settings()
     probe_size = int(settings.get("system", {}).get("probe_size", 5))
     sweep_limit = int(settings.get("system", {}).get("sweep_limit", 50))
@@ -91,6 +101,7 @@ def run_once(state: GlobalState, db_path: str, workspace: str, logs_dir: str) ->
             raw_urls.extend(f.result())
 
     deduped = list(dict.fromkeys(raw_urls))
+    LOGGER.info("fan-in done: raw_urls=%s deduped=%s", len(raw_urls), len(deduped))
     state["raw_urls"] = deduped
     clips = segmentation_agent.run(deduped, logs_dir)
     state["high_light_clips"] = clips
@@ -103,4 +114,5 @@ def run_once(state: GlobalState, db_path: str, workspace: str, logs_dir: str) ->
     for agent_obj in [planner, crawler, evaluator, segmentation_agent, explorer]:
         agent_obj._consolidate_task(logs_dir)
 
+    LOGGER.info("run_once done: clips=%s events=%s", len(state.get("high_light_clips", [])), len(state.get("manifest", {}).get("events", [])))
     return state

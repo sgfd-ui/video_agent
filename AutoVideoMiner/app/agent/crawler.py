@@ -21,9 +21,11 @@ class CrawlerAgent(AgentMemoryRuntime):
         self._setup_memory("crawler_agent")
 
     def crawl(self, platform: str, keyword: str, task_mode: str = "probe", logs_dir: str = "") -> list[dict]:
+        LOGGER.info("crawler start: platform=%s keyword=%s mode=%s", platform, keyword, task_mode)
         self.memory["system_prompt"] = get_prompt("crawler", "SYSTEM_PROMPT")
         self._append_memory(f"CRAWL:{platform}:{keyword}:{task_mode}")
         rows = search_videos(keyword, self.probe_size if task_mode == "probe" else self.sweep_limit)
+        LOGGER.info("crawler fetched raw rows=%s", len(rows))
         out = []
         low = 0
         toks = set(keyword.lower().split())
@@ -35,6 +37,7 @@ class CrawlerAgent(AgentMemoryRuntime):
             if task_mode == "sweep" and overlap < 0.2:
                 low += 1
                 if low >= 4:
+                    LOGGER.info("crawler semantic fuse triggered: platform=%s keyword=%s", platform, keyword)
                     break
             else:
                 low = 0

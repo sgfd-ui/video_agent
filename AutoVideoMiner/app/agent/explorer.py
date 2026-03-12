@@ -16,6 +16,7 @@ class ExplorerAgent(AgentMemoryRuntime):
         self._setup_memory("explorer_agent")
 
     def summarize(self, clip_paths: list[str], logs_dir: str = "") -> dict:
+        LOGGER.info("explorer start: clips=%s", len(clip_paths))
         self.memory["system_prompt"] = get_prompt("explorer", "SYSTEM_PROMPT")
         events = []
         for c in clip_paths:
@@ -27,4 +28,5 @@ class ExplorerAgent(AgentMemoryRuntime):
         self._append_memory(f"EXP:{len(clip_paths)}->{len(events)}")
         if logs_dir:
             self._compact_if_needed(logs_dir)
+        LOGGER.info("explorer done: events=%s", len(events))
         return {"events": events, "clip_count": len(events)}

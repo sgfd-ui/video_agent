@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from AutoVideoMiner.app.agent.memory_runtime import AgentMemoryRuntime
 from AutoVideoMiner.app.core.config import get_llm_for_agent
@@ -28,10 +30,45 @@ class PlannerAgent(AgentMemoryRuntime):
     def __post_init__(self) -> None:
         self._setup_memory("planner_agent")
 
-    def _llm_json(self, text: str):
+    def _extract_json_payload(self, content: str) -> str:
+        text = (content or "").strip()
+        if not text:
+            raise ValueError("empty llm content")
+
+        block_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, flags=re.IGNORECASE)
+        if block_match:
+            cleaned = block_match.group(1).strip()
+            if cleaned:
+                return cleaned
+
+        candidates: list[str] = []
+        arr_match = re.search(r"\[[\s\S]*\]", text)
+        if arr_match:
+            candidates.append(arr_match.group(0).strip())
+
+        obj_match = re.search(r"\{[\s\S]*\}", text)
+        if obj_match:
+            candidates.append(obj_match.group(0).strip())
+
+        for candidate in candidates:
+            if candidate:
+                return candidate
+
+        return text
+
+    def _llm_json(self, text: str) -> Any:
         llm = get_llm_for_agent("planner_agent", force_reload=True)
         resp = llm.invoke(text)
-        return json.loads(getattr(resp, "content", str(resp)))
+        content = getattr(resp, "content", str(resp))
+        cleaned = self._extract_json_payload(content)
+        if not cleaned:
+            LOGGER.error("Planner _llm_json empty cleaned content")
+            raise ValueError("Planner _llm_json empty cleaned content")
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError as exc:
+            LOGGER.error("Planner _llm_json parse failed. cleaned_content=%s", cleaned)
+            raise
 
     def _retrieve(self, tasks: list[dict[str, str]]) -> dict:
         evidence: dict[tuple[str, str], list[dict]] = {}
@@ -45,10 +82,12 @@ class PlannerAgent(AgentMemoryRuntime):
                 task["keyword"],
                 0.8,
             )
+        LOGGER.info("planner evidence collected: tasks=%s", len(tasks))
         return evidence
 
     def plan(self, target_scene: str, event_name: str | None = None) -> PlanResult:
         seed = f"{target_scene} {event_name}".strip() if event_name else target_scene.strip()
+        LOGGER.info("planner start: seed=%s event=%s", seed, event_name)
         mid_memory_path = Path(self.logs_dir) / "planner_agent.md"
         mid_memory_text = mid_memory_path.read_text(encoding="utf-8") if mid_memory_path.exists() else ""
 
@@ -77,9 +116,10 @@ class PlannerAgent(AgentMemoryRuntime):
         if not tasks:
             raise RuntimeError("PlannerAgent: 初稿任务为空，任务已中断。")
         tasks = [{"platform": str(item["platform"]), "keyword": str(item["keyword"])} for item in tasks]
+        LOGGER.info("planner initial tasks=%s", len(tasks))
 
         reflections: list[dict[str, str]] = []
-        for _ in range(5):
+        for loop_idx in range(5):
             evidence = self._retrieve(tasks)
             reflect_prompt = (
                 f"{system_main}\n{task_logic}\n"
@@ -101,6 +141,7 @@ class PlannerAgent(AgentMemoryRuntime):
             self._compact_if_needed(self.logs_dir)
 
             if verdict.get("status") == "OPTIMAL":
+                LOGGER.info("planner optimal at loop=%s tasks=%s", loop_idx + 1, len(tasks))
                 return PlanResult(True, tasks, reflections)
 
             revise_prompt = (
@@ -122,5 +163,7 @@ class PlannerAgent(AgentMemoryRuntime):
             if not revised_tasks:
                 raise RuntimeError("PlannerAgent: 修改后任务为空，任务已中断。")
             tasks = [{"platform": str(item["platform"]), "keyword": str(item["keyword"])} for item in revised_tasks]
+            LOGGER.info("planner revised loop=%s tasks=%s", loop_idx + 1, len(tasks))
 
+        LOGGER.warning("planner reached max loops without optimal result")
         return PlanResult(False, [], reflections)
