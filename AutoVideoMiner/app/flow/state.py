@@ -1,5 +1,3 @@
-"""Typed state definitions for global workflow and crawler subgraph."""
-
 from __future__ import annotations
 
 import operator
@@ -12,7 +10,9 @@ class GlobalState(TypedDict, total=False):
     run_mode: Literal["timer", "event"]
     end_time: datetime
     event_snapshot: list[str]
+    planner_state: bool
     planner_tasks: list[dict[str, str]]
+    planner_reflections: list[dict[str, str]]
     raw_urls: Annotated[list[str], operator.add]
     high_light_clips: list[str]
     manifest: dict

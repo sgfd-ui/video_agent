@@ -1,11 +1,14 @@
-"""Three-layer memory manager for short/mid-term memory compaction."""
-
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from AutoVideoMiner.app.prompt.memory_prompts import MEMORY_COMPACTION_PROMPT
+from AutoVideoMiner.app.core.logger import get_logger
+from AutoVideoMiner.app.core.prompt_loader import get_prompt
+from AutoVideoMiner.app.tool.memory_store import append_log, overwrite_log, read_log
+
+LOGGER = get_logger("flow.memory")
 
 
 @dataclass
@@ -23,15 +26,28 @@ class MemoryManager:
     def should_compact(self, token_usage_ratio: float) -> bool:
         return token_usage_ratio >= self.threshold
 
-    def compaction_prompt(self) -> str:
-        return MEMORY_COMPACTION_PROMPT
-
     def compact(self, agent_name: str, stale_messages: list[str]) -> MemoryPatch:
-        brief = "\n".join(stale_messages[-15:])[:500]
-        delta = f"- {agent_name}: 压缩 {len(stale_messages)} 条历史记录"
-        return MemoryPatch(md_delta=delta, context_patch=brief)
+        agent = agent_name.replace("_agent", "")
+        _ = get_prompt(agent, "memory_compression")
+        joined = "\n".join(stale_messages)
+        md_delta = f"- {agent_name}: {joined[:1000]}"
+        context_patch = joined[-500:]
+        try:
+            parsed = json.loads('{"md_delta": "' + md_delta.replace('"', "'") + '", "context_patch": "' + context_patch.replace('"', "'") + '"}')
+            return MemoryPatch(md_delta=parsed["md_delta"], context_patch=parsed["context_patch"])
+        except Exception:
+            return MemoryPatch(md_delta=md_delta, context_patch=context_patch)
 
     def append_md_delta(self, agent_name: str, patch: MemoryPatch) -> None:
-        log_path = self.logs_dir / f"{agent_name}.md"
-        with log_path.open("a", encoding="utf-8") as file:
-            file.write(f"\n{patch.md_delta}\n")
+        log_path = str(self.logs_dir / f"{agent_name}.md")
+        append_log(log_path, f"\n{patch.md_delta}\n")
+
+    def consolidate_task(self, agent_name: str, ram_tail: list[str]) -> str:
+        agent = agent_name.replace("_agent", "")
+        _ = get_prompt(agent, "task_consolidation")
+        log_path = str(self.logs_dir / f"{agent_name}.md")
+        old = read_log(log_path)
+        final = (old + "\n" + "\n".join(ram_tail)).strip()
+        overwrite_log(log_path, final + "\n")
+        LOGGER.info("Task consolidated for %s", agent_name)
+        return final

@@ -1,24 +1,33 @@
-"""SegmentationAgent: download videos and produce candidate clips via ffmpeg."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+from AutoVideoMiner.app.agent.memory_runtime import AgentMemoryRuntime
+from AutoVideoMiner.app.core.logger import get_logger
+from AutoVideoMiner.app.core.prompt_loader import get_prompt
 from AutoVideoMiner.app.tool.vision_ffmpeg import filter_valid_cuts, generate_candidate_cuts
 from AutoVideoMiner.app.tool.yt_download import download_video
 
+LOGGER = get_logger("agent.segmentation")
+
 
 @dataclass
-class SegmentationAgent:
+class SegmentationAgent(AgentMemoryRuntime):
     workspace: str
 
-    def run(self, urls: list[str]) -> list[str]:
-        clips: list[str] = []
-        for url in urls:
+    def __post_init__(self) -> None:
+        self._setup_memory("segmentation_agent")
+
+    def run(self, urls: list[str], logs_dir: str = "") -> list[str]:
+        self.memory["system_prompt"] = get_prompt("segmentation", "system_main")
+        clips = []
+        for u in urls:
             try:
-                local_video = download_video(url, self.workspace)
-                candidates = generate_candidate_cuts(local_video)
-                clips.extend(filter_valid_cuts(local_video, candidates, self.workspace))
-            except Exception:
-                continue
+                v = download_video(u, self.workspace)
+                clips.extend(filter_valid_cuts(v, generate_candidate_cuts(v), self.workspace))
+            except Exception as exc:
+                LOGGER.warning("seg fail %s", exc)
+        self._append_memory(f"SEG:{len(urls)}->{len(clips)}")
+        if logs_dir:
+            self._compact_if_needed(logs_dir)
         return clips

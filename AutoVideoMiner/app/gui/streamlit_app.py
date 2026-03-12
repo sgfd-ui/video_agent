@@ -31,6 +31,7 @@ def run_app() -> None:
 
     db_path = str(Path(__file__).resolve().parents[2] / "data" / "db" / "autovidminer.db")
     workspace = str(Path(__file__).resolve().parents[2] / "data" / "workspace")
+    logs_dir = str(Path(__file__).resolve().parents[2] / "data" / "logs")
 
     if "state" not in st.session_state:
         st.session_state.state = {
@@ -56,7 +57,7 @@ def run_app() -> None:
             }
         )
         if control_gate(st.session_state.state) != "END":
-            st.session_state.state = run_once(st.session_state.state, db_path=db_path, workspace=workspace)
+            st.session_state.state = run_once(st.session_state.state, db_path=db_path, workspace=workspace, logs_dir=logs_dir)
 
     if stop_clicked:
         st.session_state.state["stop_flag"] = True
