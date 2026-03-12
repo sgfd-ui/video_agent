@@ -30,7 +30,7 @@ class PlannerAgent(AgentMemoryRuntime):
         self._setup_memory("planner_agent")
 
     def _llm_json(self, text: str):
-        llm = get_llm_for_agent("planner_agent")
+        llm = get_llm_for_agent("planner_agent", force_reload=True)
         resp = llm.invoke(text)
         return json.loads(getattr(resp, "content", str(resp)))
 
@@ -46,7 +46,7 @@ class PlannerAgent(AgentMemoryRuntime):
     def plan(self, target_scene: str, event_name: str | None = None) -> PlanResult:
         seed = f"{target_scene} {event_name}".strip() if event_name else target_scene.strip()
         mid_memory_path = Path(self.logs_dir) / "planner_agent.md"
-        mid_memory_text = mid_memory_path.read_text(encoding="utf-8")[-2000:] if mid_memory_path.exists() else ""
+        mid_memory_text = mid_memory_path.read_text(encoding="utf-8") if mid_memory_path.exists() else ""
 
         tasks = [{"platform": p, "keyword": k} for p in self.platforms for k in [seed, f"{seed} 监控", f"{seed} CCTV", f"{seed} incident"]]
         system_main = get_prompt("planner", "SYSTEM_PROMPT")
