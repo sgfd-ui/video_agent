@@ -10,6 +10,7 @@ agents:
       provider: aws_bedrock
       model_id: amazon.nova-lite-v1:0
       temperature: 0
+      token_budget: 400000
       region_env: PLANNER_AWS_REGION
       access_key_env: PLANNER_AWS_ACCESS_KEY_ID
       secret_key_env: PLANNER_AWS_SECRET_ACCESS_KEY
@@ -27,6 +28,7 @@ agents:
       provider: aws_bedrock
       model_id: amazon.nova-lite-v1:0
       temperature: 0
+      token_budget: 400000
       region_env: CRAWLER_AWS_REGION
       access_key_env: CRAWLER_AWS_ACCESS_KEY_ID
       secret_key_env: CRAWLER_AWS_SECRET_ACCESS_KEY
@@ -44,6 +46,7 @@ agents:
       provider: aws_bedrock
       model_id: amazon.nova-lite-v1:0
       temperature: 0
+      token_budget: 400000
       region_env: EVALUATOR_AWS_REGION
       access_key_env: EVALUATOR_AWS_ACCESS_KEY_ID
       secret_key_env: EVALUATOR_AWS_SECRET_ACCESS_KEY
@@ -61,6 +64,7 @@ agents:
       provider: aws_bedrock
       model_id: amazon.nova-lite-v1:0
       temperature: 0
+      token_budget: 400000
       region_env: SEGMENTATION_AWS_REGION
       access_key_env: SEGMENTATION_AWS_ACCESS_KEY_ID
       secret_key_env: SEGMENTATION_AWS_SECRET_ACCESS_KEY
@@ -78,6 +82,7 @@ agents:
       provider: aws_bedrock
       model_id: amazon.nova-lite-v1:0
       temperature: 0
+      token_budget: 400000
       region_env: EXPLORER_AWS_REGION
       access_key_env: EXPLORER_AWS_ACCESS_KEY_ID
       secret_key_env: EXPLORER_AWS_SECRET_ACCESS_KEY

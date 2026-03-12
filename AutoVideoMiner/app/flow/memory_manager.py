@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from AutoVideoMiner.app.prompt.memory_prompts import MEMORY_COMPACTION_PROMPT
+
 
 @dataclass
 class MemoryPatch:
@@ -20,6 +22,9 @@ class MemoryManager:
 
     def should_compact(self, token_usage_ratio: float) -> bool:
         return token_usage_ratio >= self.threshold
+
+    def compaction_prompt(self) -> str:
+        return MEMORY_COMPACTION_PROMPT
 
     def compact(self, agent_name: str, stale_messages: list[str]) -> MemoryPatch:
         brief = "\n".join(stale_messages[-15:])[:500]

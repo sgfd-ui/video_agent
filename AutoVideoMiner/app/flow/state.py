@@ -16,6 +16,7 @@ class GlobalState(TypedDict, total=False):
     raw_urls: Annotated[list[str], operator.add]
     high_light_clips: list[str]
     manifest: dict
+    token_usage: dict
     stop_flag: bool
 
 

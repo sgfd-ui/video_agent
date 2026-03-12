@@ -7,6 +7,8 @@ from pathlib import Path
 
 import streamlit as st
 
+from AutoVideoMiner.app.core.config import load_settings
+from AutoVideoMiner.app.core.token_usage import init_token_usage
 from AutoVideoMiner.app.flow.graph import control_gate, run_once
 from AutoVideoMiner.app.tool.sqlite_db import fetch_event_snapshot
 
@@ -15,6 +17,7 @@ def run_app() -> None:
     st.set_page_config(page_title="AutoVideoMiner", layout="wide")
     st.title("AutoVideoMiner 控制台")
 
+    settings = load_settings()
     target_scene = st.text_input("目标场景", "欧洲 住宅 室外监控")
     run_mode = st.radio("运行模式", ["event", "timer"], horizontal=True)
 
@@ -39,6 +42,7 @@ def run_app() -> None:
             "raw_urls": [],
             "high_light_clips": [],
             "manifest": {"events": []},
+            "token_usage": init_token_usage(settings),
         }
 
     if start_clicked:
@@ -64,6 +68,17 @@ def run_app() -> None:
     a.metric("并发线程", len(state.get("planner_tasks", [])))
     b.metric("URL 入库数量", len(state.get("raw_urls", [])))
     c.metric("高光片段数量", len(state.get("high_light_clips", [])))
+
+    st.subheader("Token 使用情况")
+    token_usage = state.get("token_usage", {"total_used": 0, "total_budget": 0, "agents": {}})
+    total_used = int(token_usage.get("total_used", 0))
+    total_budget = max(1, int(token_usage.get("total_budget", 1)))
+    st.progress(min(1.0, total_used / total_budget), text=f"总使用量: {total_used} / {total_budget} tokens")
+
+    for agent_name, info in token_usage.get("agents", {}).items():
+        used = int(info.get("used", 0))
+        budget = max(1, int(info.get("budget", 400000)))
+        st.write(f"- {agent_name}: {used}/{budget} tokens")
 
     st.subheader("Agent OS 日志流")
     st.code(
