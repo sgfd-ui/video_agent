@@ -7,9 +7,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from AutoVideoMiner.app.core.config import get_llm_for_agent
+from AutoVideoMiner.app.core.logger import get_logger
 from AutoVideoMiner.app.core.token_usage import add_token_usage, estimate_tokens
 from AutoVideoMiner.app.prompt.agent_prompts import EVALUATOR_PROMPT
 from AutoVideoMiner.app.tool.sqlite_db import upsert_search_history
+
+LOGGER = get_logger("agent.evaluator")
 
 
 @dataclass
@@ -35,6 +38,7 @@ class EvaluatorAgent:
         target_scene: str,
         token_usage: dict[str, Any] | None = None,
     ) -> tuple[float, str]:
+        LOGGER.info("Evaluator start | platform=%s keyword=%s samples=%s", platform, keyword, len(top_5_results))
         score, reason = self._fallback_score(top_5_results, target_scene)
         prompt = (
             f"{EVALUATOR_PROMPT}\n"
@@ -51,10 +55,12 @@ class EvaluatorAgent:
             if token_usage is not None:
                 used = estimate_tokens(prompt) + estimate_tokens(content)
                 add_token_usage(token_usage, "evaluator_agent", used)
-        except Exception:
+        except Exception as exc:
+            LOGGER.warning("Evaluator llm fallback | reason=%s", exc)
             if token_usage is not None:
                 add_token_usage(token_usage, "evaluator_agent", estimate_tokens(prompt))
 
         score = max(0.0, min(1.0, score))
         upsert_search_history(self.db_path, platform=platform, keyword=keyword, score=score, reason=reason)
+        LOGGER.info("Evaluator done | platform=%s keyword=%s score=%.3f", platform, keyword, score)
         return score, reason
