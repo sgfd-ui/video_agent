@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import boto3
 import yaml
-from dotenv import load_dotenv
+from dotenv import dotenv_values, load_dotenv
 from langchain_aws import BedrockEmbeddings, ChatBedrock
 
 from AutoVideoMiner.app.core.logger import get_logger
@@ -31,24 +30,79 @@ def load_settings() -> dict[str, Any]:
 
 def reload_settings() -> dict[str, Any]:
     load_settings.cache_clear()
+    load_env_values.cache_clear()
     return load_settings()
 
 
-def _env(name: str, required: bool = False, default: str | None = None) -> str | None:
-    value = os.getenv(name, default)
-    if required and not value:
-        raise EnvironmentError(f"缺少环境变量: {name}")
-    return value
+@lru_cache(maxsize=1)
+def load_env_values() -> dict[str, str]:
+    """Load credentials only from config/.env file, not process environment."""
+
+    env_path = PROJECT_ROOT / "config" / ".env"
+    if not env_path.exists():
+        return {}
+    raw = dotenv_values(env_path)
+    return {k: str(v) for k, v in raw.items() if v is not None}
+
+
+def _get_cfg_value(
+    model_cfg: dict[str, Any],
+    *,
+    direct_key: str,
+    env_key_name: str,
+    required: bool,
+    default: str | None = None,
+) -> str | None:
+    if model_cfg.get(direct_key):
+        return str(model_cfg[direct_key])
+
+    env_var_name = model_cfg.get(env_key_name)
+    if env_var_name:
+        value = load_env_values().get(str(env_var_name))
+        if value:
+            return value
+
+    if required:
+        raise EnvironmentError(
+            f"配置缺失: 请在 settings.yaml 的 `{direct_key}` 中提供值，"
+            f"或配置 `{env_key_name}` 并在 config/.env 中提供对应变量值。"
+        )
+    return default
 
 
 def _build_client_from_cfg(model_cfg: dict[str, Any]):
-    region = model_cfg.get("region") or _env(model_cfg["region_env"], required=False, default="us-east-1")
+    region = _get_cfg_value(
+        model_cfg,
+        direct_key="region",
+        env_key_name="region_env",
+        required=False,
+        default="us-east-1",
+    )
+    access_key = _get_cfg_value(
+        model_cfg,
+        direct_key="access_key",
+        env_key_name="access_key_env",
+        required=True,
+    )
+    secret_key = _get_cfg_value(
+        model_cfg,
+        direct_key="secret_key",
+        env_key_name="secret_key_env",
+        required=True,
+    )
+    session_token = _get_cfg_value(
+        model_cfg,
+        direct_key="session_token",
+        env_key_name="session_token_env",
+        required=False,
+    )
+
     return boto3.client(
         "bedrock-runtime",
         region_name=region,
-        aws_access_key_id=_env(model_cfg["access_key_env"], required=False),
-        aws_secret_access_key=_env(model_cfg["secret_key_env"], required=False),
-        aws_session_token=_env(model_cfg["session_token_env"], required=False),
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        aws_session_token=session_token,
     )
 
 
