@@ -22,8 +22,8 @@ class EvaluatorAgent(AgentMemoryRuntime):
         self._setup_memory("evaluator_agent")
 
     def evaluate(self, platform: str, keyword: str, top_5_results: list[dict], target_scene: str, token_usage: dict[str, Any] | None = None, logs_dir: str = "") -> tuple[float, str]:
-        self.memory["system_prompt"] = get_prompt("evaluator", "system_main")
-        prompt = f"{get_prompt('evaluator','system_main')}\n{get_prompt('evaluator','task_logic')}\nscene:{target_scene}\nsamples:{[x.get('title','') for x in top_5_results[:5]]}"
+        self.memory["system_prompt"] = get_prompt("evaluator", "SYSTEM_PROMPT")
+        prompt = f"{get_prompt('evaluator','SYSTEM_PROMPT')}\n{get_prompt('evaluator','SCORING_PROMPT')}\nscene:{target_scene}\nsamples:{[x.get('title','') for x in top_5_results[:5]]}"
         score, reason = 0.0, "probe结果为空"
         try:
             llm = get_llm_for_agent("evaluator_agent")

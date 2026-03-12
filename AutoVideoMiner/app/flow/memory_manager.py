@@ -9,6 +9,7 @@ from AutoVideoMiner.app.core.prompt_loader import get_prompt
 from AutoVideoMiner.app.tool.memory_store import append_log, overwrite_log, read_log
 
 LOGGER = get_logger("flow.memory")
+AGENTS = ["planner_agent", "crawler_agent", "evaluator_agent", "segmentation_agent", "explorer_agent"]
 
 
 @dataclass
@@ -22,13 +23,21 @@ class MemoryManager:
         self.logs_dir = Path(logs_dir)
         self.logs_dir.mkdir(parents=True, exist_ok=True)
         self.threshold = threshold
+        self._infra_check()
+
+    def _infra_check(self) -> None:
+        for agent in AGENTS:
+            path = self.logs_dir / f"{agent}.md"
+            if not path.exists():
+                path.write_text(f"# {agent} Memory Log\n\n", encoding="utf-8")
+                LOGGER.info("Initialized memory log: %s", path)
 
     def should_compact(self, token_usage_ratio: float) -> bool:
         return token_usage_ratio >= self.threshold
 
     def compact(self, agent_name: str, stale_messages: list[str]) -> MemoryPatch:
         agent = agent_name.replace("_agent", "")
-        _ = get_prompt(agent, "memory_compression")
+        _ = get_prompt(agent, "MEMORY_COMPRESSION_PROMPT")
         joined = "\n".join(stale_messages)
         md_delta = f"- {agent_name}: {joined[:1000]}"
         context_patch = joined[-500:]
@@ -44,7 +53,7 @@ class MemoryManager:
 
     def consolidate_task(self, agent_name: str, ram_tail: list[str]) -> str:
         agent = agent_name.replace("_agent", "")
-        _ = get_prompt(agent, "task_consolidation")
+        _ = get_prompt(agent, "TASK_CONSOLIDATION_PROMPT")
         log_path = str(self.logs_dir / f"{agent_name}.md")
         old = read_log(log_path)
         final = (old + "\n" + "\n".join(ram_tail)).strip()

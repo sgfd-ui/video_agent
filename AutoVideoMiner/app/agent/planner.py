@@ -49,8 +49,8 @@ class PlannerAgent(AgentMemoryRuntime):
         mid_memory_text = mid_memory_path.read_text(encoding="utf-8")[-2000:] if mid_memory_path.exists() else ""
 
         tasks = [{"platform": p, "keyword": k} for p in self.platforms for k in [seed, f"{seed} 监控", f"{seed} CCTV", f"{seed} incident"]]
-        system_main = get_prompt("planner", "system_main")
-        task_logic = get_prompt("planner", "task_logic")
+        system_main = get_prompt("planner", "SYSTEM_PROMPT")
+        task_logic = get_prompt("planner", "STRATEGY_GEN_PROMPT")
         self.memory["system_prompt"] = system_main
         self._append_memory(f"GUI:{seed}")
 
@@ -80,7 +80,7 @@ class PlannerAgent(AgentMemoryRuntime):
                 return PlanResult(True, tasks, reflections)
 
             try:
-                vp = f"{system_main}\n{task_logic}\n根据reflections修正tasks，返回任务JSON数组\ntasks:{tasks}\nreflections:{reflections}"
+                vp = f"{system_main}\n{task_logic}\n根据REVISION_PROMPT修正tasks，返回任务JSON数组\ntasks:{tasks}\nreflections:{reflections}"
                 revised = self._llm_json(vp)
                 if isinstance(revised, list):
                     vals = [x for x in revised if isinstance(x, dict) and x.get("platform") and x.get("keyword")]

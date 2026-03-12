@@ -3,12 +3,10 @@ from __future__ import annotations
 import importlib
 
 
-def get_prompt(agent: str, key: str) -> str:
+def get_prompt(agent: str, prompt_name: str) -> str:
     module_name = f"AutoVideoMiner.app.prompt.{agent}_prompts"
     module = importlib.import_module(module_name)
-    var_name = f"{agent.upper()}_PROMPT"
-    prompt_dict = getattr(module, var_name)
-    value = prompt_dict.get(key)
+    value = getattr(module, prompt_name, None)
     if value is None:
-        raise KeyError(f"Prompt key not found: {agent}.{key}")
+        raise KeyError(f"Prompt not found: {module_name}.{prompt_name}")
     return value

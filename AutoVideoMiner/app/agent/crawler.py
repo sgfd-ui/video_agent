@@ -21,7 +21,7 @@ class CrawlerAgent(AgentMemoryRuntime):
         self._setup_memory("crawler_agent")
 
     def crawl(self, platform: str, keyword: str, task_mode: str = "probe", logs_dir: str = "") -> list[dict]:
-        self.memory["system_prompt"] = get_prompt("crawler", "system_main")
+        self.memory["system_prompt"] = get_prompt("crawler", "SYSTEM_PROMPT")
         self._append_memory(f"CRAWL:{platform}:{keyword}:{task_mode}")
         rows = search_videos(keyword, self.probe_size if task_mode == "probe" else self.sweep_limit)
         out = []
