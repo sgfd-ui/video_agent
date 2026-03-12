@@ -8,7 +8,6 @@ from typing import Any
 
 import boto3
 import yaml
-from dotenv import dotenv_values, load_dotenv
 from langchain_aws import BedrockEmbeddings, ChatBedrock
 
 from AutoVideoMiner.app.core.logger import get_logger
@@ -20,7 +19,6 @@ SETTINGS_PATH = PROJECT_ROOT / "config" / "settings.yaml"
 
 @lru_cache(maxsize=1)
 def load_settings() -> dict[str, Any]:
-    load_dotenv(PROJECT_ROOT / "config" / ".env", override=False)
     with SETTINGS_PATH.open("r", encoding="utf-8") as file:
         data = yaml.safe_load(file)
     if not isinstance(data, dict):
@@ -30,72 +28,23 @@ def load_settings() -> dict[str, Any]:
 
 def reload_settings() -> dict[str, Any]:
     load_settings.cache_clear()
-    load_env_values.cache_clear()
     return load_settings()
 
 
-@lru_cache(maxsize=1)
-def load_env_values() -> dict[str, str]:
-    """Load credentials only from config/.env file, not process environment."""
-
-    env_path = PROJECT_ROOT / "config" / ".env"
-    if not env_path.exists():
-        return {}
-    raw = dotenv_values(env_path)
-    return {k: str(v) for k, v in raw.items() if v is not None}
-
-
-def _get_cfg_value(
-    model_cfg: dict[str, Any],
-    *,
-    direct_key: str,
-    env_key_name: str,
-    required: bool,
-    default: str | None = None,
-) -> str | None:
-    if model_cfg.get(direct_key):
-        return str(model_cfg[direct_key])
-
-    env_var_name = model_cfg.get(env_key_name)
-    if env_var_name:
-        value = load_env_values().get(str(env_var_name))
-        if value:
-            return value
-
-    if required:
-        raise EnvironmentError(
-            f"配置缺失: 请在 settings.yaml 的 `{direct_key}` 中提供值，"
-            f"或配置 `{env_key_name}` 并在 config/.env 中提供对应变量值。"
-        )
-    return default
+def _get_cfg_value(model_cfg: dict[str, Any], key: str, *, required: bool = False, default: str | None = None) -> str | None:
+    value = model_cfg.get(key)
+    if value is None or value == "":
+        if required:
+            raise EnvironmentError(f"配置缺失: 请在 settings.yaml 中配置 `{key}`。")
+        return default
+    return str(value)
 
 
 def _build_client_from_cfg(model_cfg: dict[str, Any]):
-    region = _get_cfg_value(
-        model_cfg,
-        direct_key="region",
-        env_key_name="region_env",
-        required=False,
-        default="us-east-1",
-    )
-    access_key = _get_cfg_value(
-        model_cfg,
-        direct_key="access_key",
-        env_key_name="access_key_env",
-        required=True,
-    )
-    secret_key = _get_cfg_value(
-        model_cfg,
-        direct_key="secret_key",
-        env_key_name="secret_key_env",
-        required=True,
-    )
-    session_token = _get_cfg_value(
-        model_cfg,
-        direct_key="session_token",
-        env_key_name="session_token_env",
-        required=False,
-    )
+    region = _get_cfg_value(model_cfg, "region", default="us-east-1")
+    access_key = _get_cfg_value(model_cfg, "access_key", required=True)
+    secret_key = _get_cfg_value(model_cfg, "secret_key", required=True)
+    session_token = _get_cfg_value(model_cfg, "session_token")
 
     return boto3.client(
         "bedrock-runtime",

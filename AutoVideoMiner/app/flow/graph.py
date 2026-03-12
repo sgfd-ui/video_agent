@@ -11,6 +11,7 @@ from AutoVideoMiner.app.agent.segmentation import SegmentationAgent
 from AutoVideoMiner.app.core.config import load_settings
 from AutoVideoMiner.app.core.token_usage import add_token_usage, estimate_tokens, init_token_usage
 from AutoVideoMiner.app.flow.state import CrawlerSubState, GlobalState
+from AutoVideoMiner.app.tool.ask_human import ask_human
 
 
 def control_gate(state: GlobalState) -> str:
@@ -54,7 +55,20 @@ def run_once(state: GlobalState, db_path: str, workspace: str, logs_dir: str) ->
 
     event_name = state["event_snapshot"].pop(0) if state.get("run_mode") == "event" and state.get("event_snapshot") else None
 
-    planner_result = planner.plan(state["target_scene"], event_name)
+    try:
+        planner_result = planner.plan(state["target_scene"], event_name)
+    except RuntimeError as exc:
+        state["planner_tasks"] = []
+        state["planner_state"] = False
+        state["planner_reflections"] = []
+        state["hitl"] = ask_human(str(exc))
+        state["raw_urls"] = []
+        state["high_light_clips"] = []
+        state["manifest"] = {"events": []}
+        state["stop_flag"] = True
+        planner._consolidate_task(logs_dir)
+        return state
+
     state["planner_tasks"] = planner_result.list
     state["planner_state"] = planner_result.state
     state["planner_reflections"] = planner_result.reflections

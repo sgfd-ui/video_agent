@@ -44,6 +44,7 @@ def run_app() -> None:
             "high_light_clips": [],
             "manifest": {"events": []},
             "token_usage": init_token_usage(settings),
+            "hitl": {},
         }
 
     if start_clicked:
@@ -97,4 +98,8 @@ def run_app() -> None:
     st.json(state.get("manifest", {"events": []}))
 
     st.subheader("HITL 接管中心")
-    st.info("当爬虫受阻或语义不确定时，通过 ask_human 中断并在此录入人工处理结果。")
+    hitl = state.get("hitl", {})
+    if hitl.get("status") == "interrupted":
+        st.error(f"任务已中断：{hitl.get('ask_human', '')}")
+    else:
+        st.info("当爬虫受阻或语义不确定时，通过 ask_human 中断并在此录入人工处理结果。")
