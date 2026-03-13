@@ -1,0 +1,91 @@
+system:
+  max_token_threshold: 0.8
+  probe_size: 5
+  sweep_limit: 50
+  evaluator_pass_threshold: 0.8
+agents:
+  planner_agent:
+    llm:
+      provider: aws_bedrock
+      model_id: amazon.nova-lite-v1:0
+      temperature: 0
+      token_budget: 400000
+      region: us-east-1
+      access_key: ''
+      secret_key: ''
+      session_token: ''
+    embedding:
+      provider: aws_bedrock
+      model_id: amazon.titan-embed-text-v1
+      region: us-east-1
+      access_key: ''
+      secret_key: ''
+      session_token: ''
+  crawler_agent:
+    llm:
+      provider: aws_bedrock
+      model_id: amazon.nova-lite-v1:0
+      temperature: 0
+      token_budget: 400000
+      region: us-east-1
+      access_key: ''
+      secret_key: ''
+      session_token: ''
+    embedding:
+      provider: aws_bedrock
+      model_id: amazon.titan-embed-text-v1
+      region: us-east-1
+      access_key: ''
+      secret_key: ''
+      session_token: ''
+  evaluator_agent:
+    llm:
+      provider: aws_bedrock
+      model_id: amazon.nova-lite-v1:0
+      temperature: 0
+      token_budget: 400000
+      region: us-east-1
+      access_key: ''
+      secret_key: ''
+      session_token: ''
+    embedding:
+      provider: aws_bedrock
+      model_id: amazon.titan-embed-text-v1
+      region: us-east-1
+      access_key: ''
+      secret_key: ''
+      session_token: ''
+  segmentation_agent:
+    llm:
+      provider: aws_bedrock
+      model_id: amazon.nova-lite-v1:0
+      temperature: 0
+      token_budget: 400000
+      region: us-east-1
+      access_key: ''
+      secret_key: ''
+      session_token: ''
+    embedding:
+      provider: aws_bedrock
+      model_id: amazon.titan-embed-text-v1
+      region: us-east-1
+      access_key: ''
+      secret_key: ''
+      session_token: ''
+  explorer_agent:
+    llm:
+      provider: aws_bedrock
+      model_id: amazon.nova-lite-v1:0
+      temperature: 0
+      token_budget: 400000
+      region: us-east-1
+      access_key: ''
+      secret_key: ''
+      session_token: ''
+    embedding:
+      provider: aws_bedrock
+      model_id: amazon.titan-embed-text-v1
+      region: us-east-1
+      access_key: ''
+      secret_key: ''
+      session_token: ''
