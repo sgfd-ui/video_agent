@@ -20,7 +20,7 @@ class SegmentationAgent(AgentMemoryRuntime):
 
     def run(self, urls: list[str], logs_dir: str = "") -> list[str]:
         LOGGER.info("segmentation start: urls=%s", len(urls))
-        self.memory["system_prompt"] = get_prompt("segmentation", "SYSTEM_PROMPT")
+        self.memory["system_prompt"] = get_prompt("segmentation_agent", "SYSTEM_PROMPT")
         clips = []
         for u in urls:
             try:
