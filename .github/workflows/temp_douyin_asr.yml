@@ -10,37 +10,31 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Download source audio and call independent ASR API
+      - name: Cross-check with Qwen3 and Nemotron ASR
         shell: bash
         run: |
           set -euxo pipefail
-          python - <<'PY'
-          import urllib.request, base64, json
-          audio_url='https://sf11-cdn-tos.douyinstatic.com/obj/ies-music/7682230534990482217.mp3'
-          req=urllib.request.Request(audio_url,headers={'User-Agent':'Mozilla/5.0','Referer':'https://www.douyin.com/'})
-          audio=urllib.request.urlopen(req,timeout=60).read()
-          print('audio bytes',len(audio))
-          dataurl='data:audio/mpeg;base64,'+base64.b64encode(audio).decode()
-          endpoint='https://ahm7xmakki.com/api/transcribe'
-          payload={
-            'audio':dataurl,'filename':'douyin.mp3','mime':'audio/mpeg',
-            'language':'auto','model':'accurate','timestamps':'1'
-          }
-          r=urllib.request.Request(endpoint,data=json.dumps(payload).encode(),headers={'Content-Type':'application/json','User-Agent':'Mozilla/5.0'},method='POST')
-          body=urllib.request.urlopen(r,timeout=120).read()
-          print('AUTO_RESPONSE',body.decode('utf-8','replace'))
-          open('auto.json','wb').write(body)
-          payload['translate']='1'
-          r=urllib.request.Request(endpoint,data=json.dumps(payload).encode(),headers={'Content-Type':'application/json','User-Agent':'Mozilla/5.0'},method='POST')
-          body2=urllib.request.urlopen(r,timeout=120).read()
-          print('TRANSLATE_RESPONSE',body2.decode('utf-8','replace'))
-          open('translate.json','wb').write(body2)
-          PY
+          AUDIO='https://sf11-cdn-tos.douyinstatic.com/obj/ies-music/7682230534990482217.mp3'
+          curl -L --fail --retry 2 -A 'Mozilla/5.0' -e 'https://www.douyin.com/' "$AUDIO" -o douyin.mp3
+          ls -lh douyin.mp3
+          for engine in qwen3 nemotron; do
+            for lang in auto zh; do
+              echo "===== $engine / $lang ====="
+              if [ "$lang" = auto ]; then
+                curl -sS --max-time 180 -X POST 'https://notetakers.vipresearch.ca/stt/v1/transcribe' \
+                  -F 'file=@douyin.mp3' -F "engine=$engine" | tee "${engine}_${lang}.json"
+              else
+                curl -sS --max-time 180 -X POST 'https://notetakers.vipresearch.ca/stt/v1/transcribe' \
+                  -F 'file=@douyin.mp3' -F "engine=$engine" -F 'language=zh' | tee "${engine}_${lang}.json"
+              fi
+              echo
+            done
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: temp-douyin-asr-result
+          name: temp-douyin-crosscheck
           path: |
-            auto.json
-            translate.json
+            qwen3_*.json
+            nemotron_*.json
           if-no-files-found: warn
