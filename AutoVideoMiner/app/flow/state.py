@@ -1,3 +1,5 @@
+"""Typed state definitions for global workflow and crawler subgraph."""
+
 from __future__ import annotations
 
 import operator
@@ -18,7 +20,6 @@ class GlobalState(TypedDict, total=False):
     manifest: dict
     token_usage: dict
     stop_flag: bool
-    hitl: dict[str, str]
 
 
 class CrawlerSubState(TypedDict, total=False):

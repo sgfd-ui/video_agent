@@ -1,10 +1,10 @@
+"""SegmentationAgent: download videos and produce candidate clips via ffmpeg."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from AutoVideoMiner.app.agent.memory_runtime import AgentMemoryRuntime
 from AutoVideoMiner.app.core.logger import get_logger
-from AutoVideoMiner.app.core.prompt_loader import get_prompt
 from AutoVideoMiner.app.tool.vision_ffmpeg import filter_valid_cuts, generate_candidate_cuts
 from AutoVideoMiner.app.tool.yt_download import download_video
 
@@ -12,26 +12,19 @@ LOGGER = get_logger("agent.segmentation")
 
 
 @dataclass
-class SegmentationAgent(AgentMemoryRuntime):
+class SegmentationAgent:
     workspace: str
 
-    def __post_init__(self) -> None:
-        self._setup_memory("segmentation_agent")
-
-    def run(self, urls: list[str], logs_dir: str = "") -> list[str]:
-        LOGGER.info("segmentation start: urls=%s", len(urls))
-        self.memory["system_prompt"] = get_prompt("segmentation_agent", "SYSTEM_PROMPT")
-        clips = []
-        for u in urls:
+    def run(self, urls: list[str]) -> list[str]:
+        LOGGER.info("Segmentation start | urls=%s", len(urls))
+        clips: list[str] = []
+        for url in urls:
             try:
-                v = download_video(u, self.workspace)
-                new_clips = filter_valid_cuts(v, generate_candidate_cuts(v), self.workspace)
-                clips.extend(new_clips)
-                LOGGER.info("segmentation processed url=%s new_clips=%s", u, len(new_clips))
+                local_video = download_video(url, self.workspace)
+                candidates = generate_candidate_cuts(local_video)
+                clips.extend(filter_valid_cuts(local_video, candidates, self.workspace))
             except Exception as exc:
-                LOGGER.warning("seg fail %s", exc)
-        self._append_memory(f"SEG:{len(urls)}->{len(clips)}")
-        if logs_dir:
-            self._compact_if_needed(logs_dir)
-        LOGGER.info("segmentation done: total_clips=%s", len(clips))
+                LOGGER.warning("Segmentation failed for %s | reason=%s", url, exc)
+                continue
+        LOGGER.info("Segmentation done | clips=%s", len(clips))
         return clips
